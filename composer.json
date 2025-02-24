@@ -1,0 +1,25 @@
+{
+    "name": "yasser-elgammal/laravel-egypt-national-id-parser",
+    "description": "A package to parse egyptian national id number.",
+    "license": "MIT",
+    "autoload": {
+        "psr-4": {
+            "YasserElgammal\\LaravelEgyptNationalIdParser\\": "src/"
+        }
+    },
+    "authors": [
+        {
+            "name": "YasserElgammal",
+            "email": "yassermelgammal@gmail.com"
+        }
+    ],
+    "extra": {
+        "laravel": {
+            "providers": [
+                "YasserElgammal\\LaravelEgyptNationalIdParser\\NationalIdServiceProvider"
+            ]
+        }
+    },
+    "minimum-stability": "dev",
+    "prefer-stable": true
+}
