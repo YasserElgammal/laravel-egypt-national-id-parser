@@ -27,20 +27,25 @@ class NationalIdValidator
         $this->lang = $lang;
         return $this;
     }
-
     public function validate(string $idNumber): array
     {
         $errors = [];
 
-        if (!preg_match('/^\d{14}$/', $idNumber)) {
-            $errors[] = $this->trans('validation.digits');
+        if (!$this->isValidIdFormat($idNumber)) {
             return [
-                'isValid' => false,
-                'errors' => $errors
+                'status' => false,
+                'errors' => [$this->trans('validation.digits')]
             ];
         }
 
         $components = $this->extractComponents($idNumber);
+
+        if (!$components) {
+            return [
+                'status' => false,
+                'errors' => [$this->trans('validation.invalid_format')]
+            ];
+        }
 
         if (!$this->isValidBirthDate($components['birth_date'])) {
             $errors[] = $this->trans('validation.invalid_date');
@@ -53,41 +58,57 @@ class NationalIdValidator
         return [
             'status' => empty($errors),
             'errors' => $errors,
-            'data' => [
-                'birth_date' => $components['birth_date']->format('Y-m-d'),
-                'age' => $components['birth_date']->age,
-                'gender' => [
-                    'code' => $this->getGenderCode($components['sequence']),
-                    'label' => $this->trans('gender.' . $this->getGenderCode($components['sequence']))
-                ],
-                'governorate' => [
-                    'code' => $components['governorate_code'],
-                    'label' => $this->trans('cities.' . $components['governorate_code'])
-                ],
-                'sequence' => $components['sequence'],
-                'check_digit' => $components['check_digit']
-            ]
+            'data' => empty($errors) ? $this->formatResponseData($components) : null
         ];
     }
 
-    private function extractComponents(string $idNumber): array
+    private function extractComponents(string $idNumber): ?array
     {
-        $century = substr($idNumber, 0, 1);
-        $year = substr($idNumber, 1, 2);
-        $month = substr($idNumber, 3, 2);
-        $day = substr($idNumber, 5, 2);
-        $governorateCode = substr($idNumber, 7, 2);
-        $sequence = substr($idNumber, 9, 4);
-        $checkDigit = substr($idNumber, 13, 1);
+        $centuryMap = ['1' => 1800, '2' => 1900, '3' => 2000];
+        $century = $idNumber[0];
 
-        $fullYear = ($century === '2' ? '19' : '20') . $year;
+        if (!isset($centuryMap[$century])) {
+            return null;
+        }
+
+        $fullYear = $centuryMap[$century] + (int)substr($idNumber, 1, 2);
+        $month = (int)substr($idNumber, 3, 2);
+        $day = (int)substr($idNumber, 5, 2);
+
+        if (!checkdate($month, $day, $fullYear)) {
+            return null;
+        }
 
         return [
-            'birth_date' => Carbon::createFromFormat('Y-m-d', "{$fullYear}-{$month}-{$day}"),
-            'governorate_code' => $governorateCode,
-            'sequence' => $sequence,
-            'check_digit' => $checkDigit
+            'birth_date' => Carbon::createFromFormat('Y-m-d', "$fullYear-$month-$day"),
+            'governorate_code' => substr($idNumber, 7, 2),
+            'sequence' => substr($idNumber, 9, 4),
+            'check_digit' => substr($idNumber, 13, 1)
         ];
+    }
+
+    private function formatResponseData(array $components): array
+    {
+        return [
+            'birth_date' => $components['birth_date']->format('Y-m-d'),
+            'age' => $components['birth_date']->age,
+            'gender' => [
+                'code' => $this->getGenderCode($components['sequence']),
+                'label' => $this->trans('gender.' . $this->getGenderCode($components['sequence']))
+            ],
+            'governorate' => [
+                'code' => $components['governorate_code'],
+                'label' => $this->trans('cities.' . $components['governorate_code'])
+            ],
+            'sequence' => $components['sequence'],
+            'check_digit' => $components['check_digit']
+        ];
+    }
+
+
+    private function isValidIdFormat(string $idNumber): bool
+    {
+        return preg_match('/^\d{14}$/', $idNumber);
     }
 
     private function isValidBirthDate(Carbon $date): bool

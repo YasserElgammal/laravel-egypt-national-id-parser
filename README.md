@@ -36,11 +36,12 @@ use YasserElgammal\LaravelEgyptNationalIdParser\Facades\NationalId;
 $idNumber = '00000000000000';
 $result = NationalId::validate($idNumber);
 
-if ($result['status']) {
-    echo "Valid ID: ", $result['data'];
-} else {
-    echo "Invalid ID: ", implode(", ", $result['errors']);
-}
+return response()->json([
+    'status' => $result['status'],
+    'message' => $result['status'] ? 'Valid ID' : 'Invalid ID',
+    'data' => $result['data'] ?? null,
+    'errors' => $result['errors'] ?? []
+]);
 ```
 
 ## 📝 License
