@@ -35,14 +35,21 @@ use YasserElgammal\LaravelEgyptNationalIdParser\Facades\NationalId;
 
 $idNumber = '00000000000000';
 $result = NationalId::validate($idNumber);
+```
 
+You can Also Customize returned lang, default lang is 'english':
+
+```php
+$result = NationalId::setLanguage('ar')->validate($idNumber)
+```
+
+```php
 return response()->json([
     'status' => $result['status'],
     'message' => $result['status'] ? 'Valid ID' : 'Invalid ID',
     'data' => $result['data'] ?? null,
     'errors' => $result['errors'] ?? []
 ]);
-```
 
 ## 📝 License
 This package is open-source and licensed under the [MIT License](LICENSE.md).
