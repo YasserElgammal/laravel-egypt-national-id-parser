@@ -43,9 +43,11 @@ You can Also Customize returned lang, default lang is 'english':
 $result = NationalId::setLanguage('ar')->validate($idNumber)
 ```
 
+Example:
+
 ```php
 return response()->json([
-    d'status' => $result['status'],
+    'status' => $result['status'],
     'message' => $result['status'] ? 'Valid ID' : 'Invalid ID',
     'data' => $result['data'] ?? null,
     'errors' => $result['errors'] ?? []
