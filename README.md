@@ -12,7 +12,7 @@ A Laravel package to parse and validate Egyptian National ID numbers, extracting
 Require the package via Composer:
 
 ```sh
-composer require yasserelgammal/laravel-egypt-national-id-parser
+composer require yasser-elgammal/laravel-egypt-national-id-parser
 ```
 
 Publish the configuration and translation files:
