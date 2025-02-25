@@ -45,11 +45,12 @@ $result = NationalId::setLanguage('ar')->validate($idNumber)
 
 ```php
 return response()->json([
-    'status' => $result['status'],
+    d'status' => $result['status'],
     'message' => $result['status'] ? 'Valid ID' : 'Invalid ID',
     'data' => $result['data'] ?? null,
     'errors' => $result['errors'] ?? []
 ]);
+```
 
 ## 📝 License
 This package is open-source and licensed under the [MIT License](LICENSE.md).
