@@ -5,6 +5,7 @@ return [
         'digits' => 'ID must be exactly 14 digits',
         'invalid_date' => 'Invalid birth date',
         'invalid_governorate' => 'Invalid governorate code',
+        'invalid_check_digit' => 'Invalid check digit',
     ],
     'gender' => [
         'male' => 'Male',

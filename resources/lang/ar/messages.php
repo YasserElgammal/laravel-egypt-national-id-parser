@@ -5,6 +5,7 @@ return [
         'digits' => 'يجب أن يكون رقم الهوية 14 رقماً بالضبط',
         'invalid_date' => 'تاريخ الميلاد غير صالح',
         'invalid_governorate' => 'رمز المحافظة غير صالح',
+        'invalid_check_digit' => 'الرقم التأكيدي غير صحيح',
     ],
     'gender' => [
         'male' => 'ذكر',
