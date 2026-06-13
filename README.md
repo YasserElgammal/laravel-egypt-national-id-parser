@@ -3,8 +3,9 @@
 A Laravel package to parse and validate Egyptian National ID numbers, extracting details such as birth date, gender, and governorate.
 
 ## 📌 Features
-- Validate Egyptian National ID numbers
-- Extract birth date, gender, and governorate
+- Validate Egyptian National ID numbers (including **Modulo 11 check digit verification**)
+- Extract birth date, gender, and governorate into a fully typed DTO (`NationalIdData`)
+- Custom Laravel Validation Rule
 - Supports Arabic and English translations
 
 ## 📦 Installation
@@ -28,30 +29,69 @@ The configuration file `config/national-id.php` allows customization of the pack
 
 ## 🛠 Usage
 
-### Validating an ID Number
+### 1. Using Custom Validation Rule
+
+The easiest way to use the package is through the provided validation rule:
+
+```php
+use YasserElgammal\LaravelEgyptNationalIdParser\Rules\EgyptianNationalId;
+
+$request->validate([
+    'national_id' => ['required', 'string', new EgyptianNationalId()],
+]);
+```
+
+### 2. Parsing to Data Transfer Object (DTO)
+
+You can parse an ID into a `NationalIdData` object which provides strongly-typed methods:
 
 ```php
 use YasserElgammal\LaravelEgyptNationalIdParser\Facades\NationalId;
 
-$idNumber = '00000000000000';
+$idNumber = '29001010112341';
+$data = NationalId::parse($idNumber);
+
+if ($data) {
+    echo $data->getBirthDate()->format('Y-m-d'); // Carbon instance
+    echo $data->getAge(); // int
+    echo $data->getGenderLabel(); // string (Male/Female)
+    echo $data->getGovernorateLabel(); // string
+    echo $data->getCheckDigit(); // string
+}
+```
+
+To throw an exception if the ID is invalid instead of returning `null`:
+
+```php
+use YasserElgammal\LaravelEgyptNationalIdParser\Exceptions\InvalidNationalIdException;
+
+try {
+    $data = NationalId::parseOrFail($idNumber);
+} catch (InvalidNationalIdException $e) {
+    return response()->json(['errors' => $e->getErrors()], 422);
+}
+```
+
+### 3. Validating an ID Number (Legacy Array Response)
+
+If you prefer working with arrays:
+
+```php
+use YasserElgammal\LaravelEgyptNationalIdParser\Facades\NationalId;
+
 $result = NationalId::validate($idNumber);
-```
 
-You can Also Customize returned lang, default lang is 'english':
-
-```php
-$result = NationalId::setLanguage('ar')->validate($idNumber)
-```
-
-Example:
-
-```php
 return response()->json([
-    'status' => $result['status'],
-    'message' => $result['status'] ? 'Valid ID' : 'Invalid ID',
-    'data' => $result['data'] ?? null,
-    'errors' => $result['errors'] ?? []
+    'status' => $result['status'], // boolean
+    'data' => $result['data'] ?? null, // array of components
+    'errors' => $result['errors'] ?? [] // array of validation errors
 ]);
+```
+
+You can also customize the returned language (default is 'en'):
+
+```php
+$result = NationalId::setLanguage('ar')->validate($idNumber);
 ```
 
 ## 📝 License

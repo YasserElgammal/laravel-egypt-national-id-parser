@@ -1,10 +1,14 @@
 <?php
 
+declare(strict_types=1);
+
 namespace YasserElgammal\LaravelEgyptNationalIdParser\Services;
 
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Lang;
 use InvalidArgumentException;
+use YasserElgammal\LaravelEgyptNationalIdParser\Data\NationalIdData;
+use YasserElgammal\LaravelEgyptNationalIdParser\Exceptions\InvalidNationalIdException;
 
 class NationalIdValidator
 {
@@ -14,19 +18,56 @@ class NationalIdValidator
     {
         $this->lang = $lang ?? config('national-id.default_language', 'en');
 
-        if (!in_array($this->lang, ['en', 'ar'])) {
+        if (!in_array($this->lang, ['en', 'ar'], true)) {
             throw new InvalidArgumentException('Language must be either "en" or "ar"');
         }
     }
 
     public function setLanguage(string $lang): self
     {
-        if (!in_array($lang, ['en', 'ar'])) {
+        if (!in_array($lang, ['en', 'ar'], true)) {
             throw new InvalidArgumentException('Language must be either "en" or "ar"');
         }
         $this->lang = $lang;
         return $this;
     }
+
+    /**
+     * @throws InvalidNationalIdException
+     */
+    public function parseOrFail(string $idNumber): NationalIdData
+    {
+        $result = $this->validate($idNumber);
+
+        if (!$result['status']) {
+            throw new InvalidNationalIdException(
+                implode(', ', $result['errors']),
+                $result['errors']
+            );
+        }
+
+        return $this->parse($idNumber);
+    }
+
+    public function parse(string $idNumber): ?NationalIdData
+    {
+        if (!$this->validate($idNumber)['status']) {
+            return null;
+        }
+
+        $components = $this->extractComponents($idNumber);
+
+        return new NationalIdData(
+            $components['birth_date'],
+            $this->getGenderCode($components['sequence']),
+            $this->trans('gender.' . $this->getGenderCode($components['sequence'])),
+            $components['governorate_code'],
+            $this->trans('cities.' . $components['governorate_code']),
+            $components['sequence'],
+            $components['check_digit']
+        );
+    }
+
     public function validate(string $idNumber): array
     {
         $errors = [];
@@ -55,6 +96,12 @@ class NationalIdValidator
             $errors[] = $this->trans('validation.invalid_governorate');
         }
 
+        if (!$this->isValidCheckDigit($idNumber)) {
+            $errors[] = Lang::has('laravel-egypt-national-id-parser::messages.validation.invalid_check_digit', $this->lang) 
+                        ? $this->trans('validation.invalid_check_digit') 
+                        : ($this->lang === 'ar' ? 'الرقم التأكيدي غير صحيح' : 'Invalid check digit');
+        }
+
         return [
             'status' => empty($errors),
             'errors' => $errors,
@@ -80,7 +127,7 @@ class NationalIdValidator
         }
 
         return [
-            'birth_date' => Carbon::createFromFormat('Y-m-d', "$fullYear-$month-$day"),
+            'birth_date' => Carbon::createFromFormat('Y-m-d', "$fullYear-" . sprintf('%02d', $month) . "-" . sprintf('%02d', $day))->startOfDay(),
             'governorate_code' => substr($idNumber, 7, 2),
             'sequence' => substr($idNumber, 9, 4),
             'check_digit' => substr($idNumber, 13, 1)
@@ -105,10 +152,9 @@ class NationalIdValidator
         ];
     }
 
-
     private function isValidIdFormat(string $idNumber): bool
     {
-        return preg_match('/^\d{14}$/', $idNumber);
+        return preg_match('/^\d{14}$/', $idNumber) === 1;
     }
 
     private function isValidBirthDate(Carbon $date): bool
@@ -121,9 +167,32 @@ class NationalIdValidator
         return Lang::has('laravel-egypt-national-id-parser::messages.cities.' . $code, $this->lang);
     }
 
+    private function isValidCheckDigit(string $idNumber): bool
+    {
+        $multipliers = [2, 7, 6, 5, 4, 3, 2, 7, 6, 5, 4, 3, 2];
+        $sum = 0;
+
+        for ($i = 0; $i < 13; $i++) {
+            $sum += (int)$idNumber[$i] * $multipliers[$i];
+        }
+
+        $remainder = $sum % 11;
+        $checkDigit = 11 - $remainder;
+
+        if ($checkDigit === 11) {
+            $checkDigit = 1;
+        }
+
+        if ($checkDigit === 10) {
+            return false;
+        }
+
+        return (int)$idNumber[13] === $checkDigit;
+    }
+
     private function getGenderCode(string $sequence): string
     {
-        return intval(substr($sequence, -1)) % 2 === 1 ? 'male' : 'female';
+        return (intval(substr($sequence, -1)) % 2 === 1) ? 'male' : 'female';
     }
 
     private function trans(string $key, array $replace = []): string
@@ -139,7 +208,7 @@ class NationalIdValidator
         foreach ($cities as $code => $name) {
             if ($code === 'unknown') continue;
             $formatted[] = [
-                'code' => $code,
+                'code' => (string)$code,
                 'name' => $name
             ];
         }
